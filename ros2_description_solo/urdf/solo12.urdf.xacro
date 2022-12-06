@@ -2,12 +2,15 @@
 <robot name="solo" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
     <xacro:property name="color_name" value="grey"/>
-    <xacro:property name="color" value="0.8 0.8 0.8"/>
+    <xacro:property name="color" value="0.1 0.1 0.1"/>
     <xacro:property name="opacity" value="1.0"/>
     <xacro:property name="mesh_ext" value="stl"/>
 
     <xacro:arg name="use_fake_hardware" default="true"/>
     <xacro:arg name="prefix" default=""/>
+
+    <!-- added for IMU -->
+    <xacro:arg name="imu_visual"    default="false"/>
 
     <!-- remove if using crane -->
     <link name="dummy"/>
@@ -28,6 +31,21 @@
         <parent link="base_link"/>
         <child link="dummy"/>
     </joint>
+
+
+    <!-- Newly Added world link and base_joint-->
+    <link name="world"></link>
+
+
+    <!-- Fixed joint from empty world link to the base of robot. -->
+    <!-- The base origin is offset from the world origin. -->
+    <joint name="base_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <parent link="world"/>
+        <child link="base_link"/>        
+    </joint>
+
+
 
     <!-- This file is based on https://atlas.is.localnet/confluence/display/AMDW/Quadruped+URDF+Files -->
     <link name="base_link">
@@ -127,9 +145,67 @@
 
     <gazebo>
         <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
-            <parameters>$(find ros2_control_solo_bringup)/config/solo_gazebo_forward_controller_position.yaml
+            <parameters>$(find ros2_control_solo_bringup)/config/solo_gazebo_test_controllers.yaml
             </parameters>
         </plugin>
+    </gazebo>
+
+
+    <!-- NEWLY ADDED for IMU SENSOR      -->
+    
+    <link name="imu_link">
+        <inertial>
+            <mass value="0.001"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <inertia ixx="1" ixy="1" ixz="1" iyy="1" iyz="1" izz="1"/>
+        </inertial>
+        <visual>
+            <origin rpy="-0.25 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size="0.001 0.001 0.001"/>
+            </geometry>
+        </visual>
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <box size=".001 .001 .001"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="imu_joint" type="fixed">
+      <axis xyz="1 0 0"/>  
+      <origin xyz="0 0 0.19"/>
+      <parent link="base_link"/>  
+      <child link="imu_link"/>
+    </joint>
+    
+    <gazebo reference="imu_link">
+      <gravity>true</gravity>
+        <sensor name="imu_sensor" type="imu">
+           <always_on>true</always_on>
+            <update_rate>100</update_rate>
+            <visualize>true</visualize>
+            <topic>__default_topic__</topic>
+            <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+              <!-- rename imu topic name
+              <ros>
+                <namespace>/demo</namespace>
+                <remapping>~/out:=imu</remapping>
+              </ros>
+              -->
+
+              <bodyName>imu_link</bodyName>
+              <updateRateHZ>10.0</updateRateHZ>
+              <gaussianNoise>0.0</gaussianNoise>
+              <xyzOffset>0 0 0</xyzOffset>
+              <rpyOffset>0 0 0</rpyOffset>
+              <frameId>imu_link</frameId>
+              <frameName>imu_link</frameName>
+              <initialOrientationAsReference>false</initialOrientationAsReference>
+            </plugin>
+            <pose>0 0 0 0 0 0</pose>
+        </sensor>
     </gazebo>
 
 </robot>
